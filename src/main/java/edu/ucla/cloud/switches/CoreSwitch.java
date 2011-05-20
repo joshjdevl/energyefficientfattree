@@ -1,23 +1,23 @@
-package edu.ucla.cloud;
+/**
+ *
+ */
+package edu.ucla.cloud.switches;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import edu.ucla.cloud.switches.AggregrateSwitch;
-
 /**
- * Represents Pod containing two level switch hierarchy
+ * @author Josh
  * 
  */
-public class Pod {
+public class CoreSwitch extends Switch {
 
-	private final int podId;
+	public CoreSwitch() {
+		super("CoreSwitch");
+		// TODO Auto-generated constructor stub
+	}
 
 	private final Set<AggregrateSwitch> aggregrateSwitchs = new HashSet<AggregrateSwitch>();
-
-	public Pod(final int podId) {
-		this.podId = podId;
-	}
 
 	/**
 	 * @return the aggregrateSwitchs
