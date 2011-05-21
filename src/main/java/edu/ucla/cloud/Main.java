@@ -1,16 +1,15 @@
 package edu.ucla.cloud;
 
 import java.util.Map;
-import java.util.Set;
 
 public class Main {
 
 	/**
 	 * @param args
 	 */
-	public static void main(String[] args) {
-		ExtElasticTree eetree = new ExtElasticTree();
-		Map<String, Node> result = eetree.compute();
+	public static void main(final String[] args) {
+		final ExtElasticTree eetree = new ExtElasticTree();
+		final Map<String, Node> result = eetree.compute(2);
 	}
 
 }

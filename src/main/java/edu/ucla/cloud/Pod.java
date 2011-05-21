@@ -1,7 +1,7 @@
 package edu.ucla.cloud;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 import edu.ucla.cloud.switches.AggregrateSwitch;
 
@@ -13,7 +13,7 @@ public class Pod {
 
 	private final int podId;
 
-	private final Set<AggregrateSwitch> aggregrateSwitchs = new HashSet<AggregrateSwitch>();
+	private final List<AggregrateSwitch> aggregrateSwitchs = new ArrayList<AggregrateSwitch>();
 
 	public Pod(final int podId) {
 		this.podId = podId;
@@ -22,7 +22,7 @@ public class Pod {
 	/**
 	 * @return the aggregrateSwitchs
 	 */
-	public Set<AggregrateSwitch> getAggregrateSwitchs() {
+	public List<AggregrateSwitch> getAggregrateSwitchs() {
 		return aggregrateSwitchs;
 	}
 

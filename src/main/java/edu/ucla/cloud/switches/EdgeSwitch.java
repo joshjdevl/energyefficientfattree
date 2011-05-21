@@ -13,6 +13,7 @@ import edu.ucla.cloud.Server;
  * 
  */
 public class EdgeSwitch extends Switch {
+
 	public EdgeSwitch() {
 		super("EdgeSwitch");
 	}
