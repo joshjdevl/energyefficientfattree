@@ -32,7 +32,7 @@ public class ExtElasticTree {
 	private final List<AggregrateSwitch> aggregrateSwitchesGlobal = new ArrayList<AggregrateSwitch>();
 
 	private final int numberOfPods;
-	private final int aggregateSwitchesPerPod = 4;
+	private final int aggregateSwitchesPerPod = 2;
 	private final int edgeSwitchesPerPod = 2;
 	private final int serversPerEdgeSwitch = 48;
 	private final int numberOfCoreSwitches = 4;
@@ -98,6 +98,11 @@ public class ExtElasticTree {
 
 		graph.getModel().beginUpdate();
 
+		final Map<CoreSwitch, Object> coreNodes = new HashMap<CoreSwitch, Object>();
+		final Map<AggregrateSwitch, Object> aggregateNodes = new HashMap<AggregrateSwitch, Object>();
+		final Map<EdgeSwitch, Object> edgeNodes = new HashMap<EdgeSwitch, Object>();
+		final Map<Server, Object> serverNodes = new HashMap<Server, Object>();
+
 		int x = 180;
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
 			final Object node = graph.insertVertex(parent, null, coreSwitch
@@ -120,13 +125,20 @@ public class ExtElasticTree {
 			x += 150;
 			edgeNodes.put(edgeSwitch, node);
 		}
-
 		x = 10;
+		int count = 0;
+		int y = 350;
 		for (final Server server : serversGlobal) {
+			count++;
+			if (count % 15 == 0) {
+				y += 100;
+				x = 10;
+			}
 			final Object node = graph.insertVertex(parent, null, server
-					.getServerId(), x, 350, 80, 30);
-			x += 150;
+					.getServerId(), x, y, 50, 10);
+			x += 90;
 			serverNodes.put(server, node);
+
 		}
 
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
@@ -135,19 +147,29 @@ public class ExtElasticTree {
 			for (final AggregrateSwitch aggregrateSwitch : coreSwitch
 					.getAggregrateSwitchs()) {
 				final Object aNode = aggregateNodes.get(aggregrateSwitch);
-				if (coreSwitch.isActive() && aggregrateSwitch.isActive()) {
+				if (aggregrateSwitch.isActive()) {
 					graph.insertEdge(parent, null, "", cNode, aNode);
-				}
 
-				for (final EdgeSwitch edgeSwitch : aggregrateSwitch
-						.getEdgeSwitchs()) {
-					final Object eNode = edgeNodes.get(edgeSwitch);
-					if (aggregrateSwitch.isActive() && coreSwitch.isActive()) {
-						graph.insertEdge(parent, null, "", aNode, eNode);
+					for (final EdgeSwitch edgeSwitch : aggregrateSwitch
+							.getEdgeSwitchs()) {
+						if (edgeSwitch.isActive()) {
+							final Object eNode = edgeNodes.get(edgeSwitch);
+							graph.insertEdge(parent, null, "", aNode, eNode);
+
+							for (final Server server : edgeSwitch.getServers()) {
+								if (server.isActive()) {
+									final Object sNode = serverNodes
+											.get(server);
+									graph.insertEdge(parent, null, "d", eNode,
+											sNode);
+								}
+							}
+						}
+
 					}
 				}
-			}
 
+			}
 		}
 
 		graph.getModel().endUpdate();
@@ -262,7 +284,7 @@ public class ExtElasticTree {
 	private Set<Server> createServers(final String edgeSwitchId) {
 		final Set<Server> servers = new HashSet<Server>();
 		for (int s = 0; s < serversPerEdgeSwitch; s++) {
-			final Server server = new Server(edgeSwitchId, s);
+			final Server server = new Server("Server", s);
 			servers.add(server);
 			serversGlobal.add(server);
 		}
