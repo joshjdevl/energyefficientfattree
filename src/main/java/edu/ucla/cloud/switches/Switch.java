@@ -34,4 +34,40 @@ public abstract class Switch implements Node {
 		this.active = active;
 	}
 
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result
+				+ ((switchId == null) ? 0 : switchId.hashCode());
+		return result;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(final Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		final Switch other = (Switch) obj;
+		if (switchId == null) {
+			if (other.switchId != null)
+				return false;
+		} else if (!switchId.equals(other.switchId))
+			return false;
+		return true;
+	}
+
 }
