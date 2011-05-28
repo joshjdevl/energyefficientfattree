@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.mxgraph.analysis.mxGraphAnalysis;
+import com.mxgraph.analysis.mxICostFunction;
 import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
 
 import edu.ucla.cloud.switches.AggregrateSwitch;
@@ -28,6 +31,7 @@ public class ExtElasticTree {
 	private final List<EdgeSwitch> edgeSwitchesGlobal = new ArrayList<EdgeSwitch>();
 	private final List<AggregrateSwitch> aggregrateSwitchesGlobal = new ArrayList<AggregrateSwitch>();
 
+	private final int numberOfPods;
 	private final int aggregateSwitchesPerPod = 4;
 	private final int edgeSwitchesPerPod = 2;
 	private final int serversPerEdgeSwitch = 48;
@@ -35,11 +39,24 @@ public class ExtElasticTree {
 
 	private final int UNIT_OF_WORK_PER_SERVER = 2;
 
+	private final boolean[][] connectedTopology;
+
+	final Map<CoreSwitch, Object> coreNodes = new HashMap<CoreSwitch, Object>();
+	final Map<AggregrateSwitch, Object> aggregateNodes = new HashMap<AggregrateSwitch, Object>();
+	final Map<EdgeSwitch, Object> edgeNodes = new HashMap<EdgeSwitch, Object>();
+	Map<Server, Object> serverNodes = new HashMap<Server, Object>();
+
 	public ExtElasticTree() {
 		this(4);
 	}
 
 	public ExtElasticTree(final int numPods) {
+		numberOfPods = numPods;
+
+		final int totalServers = numberOfPods * edgeSwitchesPerPod
+				* serversPerEdgeSwitch;
+		connectedTopology = new boolean[totalServers][totalServers];
+
 		for (int c = 0; c < numberOfCoreSwitches; c++) {
 			final CoreSwitch coreSwitch = new CoreSwitch();
 			coreSwitchesGlobal.add(coreSwitch);
@@ -56,26 +73,30 @@ public class ExtElasticTree {
 					for (int c = 0; c < numberOfCoreSwitches / 2; c++) {
 						final CoreSwitch coreSwitch = coreSwitchesGlobal.get(c);
 						coreSwitch.getAggregrateSwitchs().add(aggregrateSwitch);
+						aggregrateSwitch.getCoreSwitches().add(coreSwitch);
 					}
 				} else {
 					for (int c = numberOfCoreSwitches / 2; c < numberOfCoreSwitches; c++) {
 						final CoreSwitch coreSwitch = coreSwitchesGlobal.get(c);
 						coreSwitch.getAggregrateSwitchs().add(aggregrateSwitch);
+						aggregrateSwitch.getCoreSwitches().add(coreSwitch);
 					}
 				}
 			}
 		}
 	}
 
-	public mxGraphComponent print() {
+	public int calculateRoutingThroughput() {
+
+		return 0;
+	}
+
+	private mxGraph getGraph() {
+
 		final mxGraph graph = new mxGraph();
 		final Object parent = graph.getDefaultParent();
 
 		graph.getModel().beginUpdate();
-
-		final Map<CoreSwitch, Object> coreNodes = new HashMap<CoreSwitch, Object>();
-		final Map<AggregrateSwitch, Object> aggregateNodes = new HashMap<AggregrateSwitch, Object>();
-		final Map<EdgeSwitch, Object> edgeNodes = new HashMap<EdgeSwitch, Object>();
 
 		int x = 180;
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
@@ -100,24 +121,82 @@ public class ExtElasticTree {
 			edgeNodes.put(edgeSwitch, node);
 		}
 
+		x = 10;
+		for (final Server server : serversGlobal) {
+			final Object node = graph.insertVertex(parent, null, server
+					.getServerId(), x, 350, 80, 30);
+			x += 150;
+			serverNodes.put(server, node);
+		}
+
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
 			final Object cNode = coreNodes.get(coreSwitch);
 
 			for (final AggregrateSwitch aggregrateSwitch : coreSwitch
 					.getAggregrateSwitchs()) {
 				final Object aNode = aggregateNodes.get(aggregrateSwitch);
-				graph.insertEdge(parent, null, "", cNode, aNode);
+				if (coreSwitch.isActive() && aggregrateSwitch.isActive()) {
+					graph.insertEdge(parent, null, "", cNode, aNode);
+				}
 
 				for (final EdgeSwitch edgeSwitch : aggregrateSwitch
 						.getEdgeSwitchs()) {
 					final Object eNode = edgeNodes.get(edgeSwitch);
-					graph.insertEdge(parent, null, "", aNode, eNode);
+					if (aggregrateSwitch.isActive() && coreSwitch.isActive()) {
+						graph.insertEdge(parent, null, "", aNode, eNode);
+					}
 				}
 			}
 
 		}
 
 		graph.getModel().endUpdate();
+
+		return graph;
+	}
+
+	public boolean areAllServersConnected() {
+		final mxGraph graph = getGraph();
+
+		final mxICostFunction cf = new mxICostFunction() {
+			@Override
+			public double getCost(final mxCellState state) {
+				return 1;
+			}
+
+		};
+
+		final Object[] v = graph.getChildVertices(graph.getDefaultParent());
+		final Object[] e = graph.getChildEdges(graph.getDefaultParent());
+		final mxGraphAnalysis mga = mxGraphAnalysis.getInstance();
+
+		int start = 1;
+		final int len = edgeSwitchesGlobal.size();
+		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
+			for (int x = start; x < len; x++) {
+				final EdgeSwitch compare = edgeSwitchesGlobal.get(x);
+				final Server server1 = edgeSwitch.getServers().iterator()
+						.next();
+				final Server server2 = compare.getServers().iterator().next();
+			}
+
+			start++;
+		}
+
+		final Object from = null;
+		final Object to = null;
+		// mga.getShortestPath(graph, from, to, cf, Integer.MAX_VALUE, false);
+
+		final Object[] edges = mga.getMinimumSpanningTree(graph, v, e, cf);
+
+		if (edges == null || edges.length < 1) {
+			return false;
+		}
+		return true;
+	}
+
+	public mxGraphComponent print() {
+		final mxGraph graph = getGraph();
 
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
 		return graphComponent;
@@ -131,14 +210,23 @@ public class ExtElasticTree {
 		int throughputSum = 0;
 
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
-			for (final AggregrateSwitch aggregrateSwitch : coreSwitch
-					.getAggregrateSwitchs()) {
-				throughputSum += CORE_THROUGHPUT;
-				for (final EdgeSwitch edgeSwitch : aggregrateSwitch
-						.getEdgeSwitchs()) {
-					throughputSum += AGGREGATE_THROUGHPUT;
-					for (final Server server : edgeSwitch.getServers()) {
-						throughputSum += EDGE_THROUGHPUT;
+			if (coreSwitch.isActive()) {
+				for (final AggregrateSwitch aggregrateSwitch : coreSwitch
+						.getAggregrateSwitchs()) {
+					if (aggregrateSwitch.isActive()) {
+						throughputSum += CORE_THROUGHPUT;
+						for (final EdgeSwitch edgeSwitch : aggregrateSwitch
+								.getEdgeSwitchs()) {
+							if (edgeSwitch.isActive()) {
+								throughputSum += AGGREGATE_THROUGHPUT;
+								for (final Server server : edgeSwitch
+										.getServers()) {
+									if (server.isActive()) {
+										throughputSum += EDGE_THROUGHPUT;
+									}
+								}
+							}
+						}
 					}
 				}
 			}

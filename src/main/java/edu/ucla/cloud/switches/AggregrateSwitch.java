@@ -18,12 +18,20 @@ public class AggregrateSwitch extends Switch {
 	}
 
 	private final Set<EdgeSwitch> edgeSwitchs = new HashSet<EdgeSwitch>();
+	private final Set<CoreSwitch> coreSwitches = new HashSet<CoreSwitch>();
 
 	/**
 	 * @return the edgeSwitchs
 	 */
 	public Set<EdgeSwitch> getEdgeSwitchs() {
 		return edgeSwitchs;
+	}
+
+	/**
+	 * @return the coreSwitches
+	 */
+	public Set<CoreSwitch> getCoreSwitches() {
+		return coreSwitches;
 	}
 
 }

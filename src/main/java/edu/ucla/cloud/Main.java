@@ -1,7 +1,5 @@
 package edu.ucla.cloud;
 
-import java.util.Map;
-
 import javax.swing.JFrame;
 
 import com.mxgraph.swing.mxGraphComponent;
@@ -12,7 +10,8 @@ public class Main extends JFrame {
 		super("Network Topology");
 
 		final ExtElasticTree eetree = new ExtElasticTree();
-		final Map<String, Node> result = eetree.compute(2);
+		eetree.compute(2);
+		System.out.println("IsConnected=" + eetree.areAllServersConnected());
 		final mxGraphComponent graphComponent = eetree.print();
 		getContentPane().add(graphComponent);
 		// System.out.println(eetree.calculateThroughput());
