@@ -11,6 +11,8 @@ public class Main extends JFrame {
 
 		final ExtElasticTree eetree = new ExtElasticTree();
 		// eetree.compute(2);
+
+		eetree.clearServerEdges();
 		System.out.println("IsConnected=" + eetree.areAllServersConnected());
 		final mxGraphComponent graphComponent = eetree.print();
 		getContentPane().add(graphComponent);

@@ -27,6 +27,7 @@ import edu.ucla.cloud.switches.Switch;
  * 
  */
 public class ExtElasticTree {
+	private final GraphUtil graphUtil = new GraphUtil();
 
 	private final List<CoreSwitch> coreSwitchesGlobal = new ArrayList<CoreSwitch>();
 	private final Set<Pod> pods = new HashSet<Pod>();
@@ -47,7 +48,7 @@ public class ExtElasticTree {
 	final Map<CoreSwitch, mxCell> coreNodes = new HashMap<CoreSwitch, mxCell>();
 	final Map<AggregrateSwitch, mxCell> aggregateNodes = new HashMap<AggregrateSwitch, mxCell>();
 	final Map<EdgeSwitch, mxCell> edgeNodes = new HashMap<EdgeSwitch, mxCell>();
-	Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
+	final Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
 
 	public ExtElasticTree() {
 		this(4);
@@ -92,6 +93,10 @@ public class ExtElasticTree {
 	public int calculateRoutingThroughput() {
 
 		return 0;
+	}
+
+	public void clearServerEdges() {
+		graphUtil.removeAllServerEdges(serversGlobal);
 	}
 
 	private mxGraph getGraph() {
