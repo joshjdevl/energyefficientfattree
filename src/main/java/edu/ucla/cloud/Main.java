@@ -10,7 +10,7 @@ public class Main extends JFrame {
 		super("Network Topology");
 
 		final ExtElasticTree eetree = new ExtElasticTree();
-		eetree.compute(2);
+		// eetree.compute(2);
 		System.out.println("IsConnected=" + eetree.areAllServersConnected());
 		final mxGraphComponent graphComponent = eetree.print();
 		getContentPane().add(graphComponent);

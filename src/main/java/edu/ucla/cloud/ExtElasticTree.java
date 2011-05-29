@@ -3,12 +3,15 @@ package edu.ucla.cloud;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import com.mxgraph.analysis.mxGraphAnalysis;
 import com.mxgraph.analysis.mxICostFunction;
+import com.mxgraph.model.mxCell;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
@@ -41,10 +44,10 @@ public class ExtElasticTree {
 
 	private final boolean[][] connectedTopology;
 
-	final Map<CoreSwitch, Object> coreNodes = new HashMap<CoreSwitch, Object>();
-	final Map<AggregrateSwitch, Object> aggregateNodes = new HashMap<AggregrateSwitch, Object>();
-	final Map<EdgeSwitch, Object> edgeNodes = new HashMap<EdgeSwitch, Object>();
-	Map<Server, Object> serverNodes = new HashMap<Server, Object>();
+	final Map<CoreSwitch, mxCell> coreNodes = new HashMap<CoreSwitch, mxCell>();
+	final Map<AggregrateSwitch, mxCell> aggregateNodes = new HashMap<AggregrateSwitch, mxCell>();
+	final Map<EdgeSwitch, mxCell> edgeNodes = new HashMap<EdgeSwitch, mxCell>();
+	Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
 
 	public ExtElasticTree() {
 		this(4);
@@ -98,21 +101,16 @@ public class ExtElasticTree {
 
 		graph.getModel().beginUpdate();
 
-		final Map<CoreSwitch, Object> coreNodes = new HashMap<CoreSwitch, Object>();
-		final Map<AggregrateSwitch, Object> aggregateNodes = new HashMap<AggregrateSwitch, Object>();
-		final Map<EdgeSwitch, Object> edgeNodes = new HashMap<EdgeSwitch, Object>();
-		final Map<Server, Object> serverNodes = new HashMap<Server, Object>();
-
 		int x = 180;
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
-			final Object node = graph.insertVertex(parent, null, coreSwitch
-					.getSwitchId(), x, 20, 80, 30);
+			final mxCell node = (mxCell) graph.insertVertex(parent, null,
+					coreSwitch.getSwitchId(), x, 20, 80, 30);
 			x += 250;
 			coreNodes.put(coreSwitch, node);
 		}
 		x = 80;
 		for (final AggregrateSwitch aggregrateSwitch : aggregrateSwitchesGlobal) {
-			final Object node = graph.insertVertex(parent, null,
+			final mxCell node = (mxCell) graph.insertVertex(parent, null,
 					aggregrateSwitch.getSwitchId(), x, 150, 80, 30);
 			x += 150;
 			aggregateNodes.put(aggregrateSwitch, node);
@@ -120,8 +118,8 @@ public class ExtElasticTree {
 
 		x = 80;
 		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
-			final Object node = graph.insertVertex(parent, null, edgeSwitch
-					.getSwitchId(), x, 250, 80, 30);
+			final mxCell node = (mxCell) graph.insertVertex(parent, null,
+					edgeSwitch.getSwitchId(), x, 250, 80, 30);
 			x += 150;
 			edgeNodes.put(edgeSwitch, node);
 		}
@@ -130,45 +128,59 @@ public class ExtElasticTree {
 		int y = 350;
 		for (final Server server : serversGlobal) {
 			count++;
-			if (count % 15 == 0) {
+			if (count % 10 == 0) {
 				y += 100;
 				x = 10;
 			}
-			final Object node = graph.insertVertex(parent, null, server
-					.getServerId(), x, y, 50, 10);
-			x += 90;
+			final mxCell node = (mxCell) graph.insertVertex(parent, null,
+					server.getServerId(), x, y, 50, 10);
+			x += 140;
 			serverNodes.put(server, node);
 
 		}
 
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
-			final Object cNode = coreNodes.get(coreSwitch);
+			final mxCell cNode = coreNodes.get(coreSwitch);
 
 			for (final AggregrateSwitch aggregrateSwitch : coreSwitch
 					.getAggregrateSwitchs()) {
-				final Object aNode = aggregateNodes.get(aggregrateSwitch);
+				final mxCell aNode = aggregateNodes.get(aggregrateSwitch);
 				if (aggregrateSwitch.isActive()) {
-					graph.insertEdge(parent, null, "", cNode, aNode);
+					graph.insertEdge(parent, null, coreSwitch.getSwitchId()
+							+ aggregrateSwitch.getSwitchId(), cNode, aNode);
+					graph.insertEdge(parent, null, aggregrateSwitch
+							.getSwitchId()
+							+ coreSwitch.getSwitchId(), aNode, cNode);
 
 					for (final EdgeSwitch edgeSwitch : aggregrateSwitch
 							.getEdgeSwitchs()) {
 						if (edgeSwitch.isActive()) {
-							final Object eNode = edgeNodes.get(edgeSwitch);
-							graph.insertEdge(parent, null, "", aNode, eNode);
+							final mxCell eNode = edgeNodes.get(edgeSwitch);
+							graph.insertEdge(parent, null, aggregrateSwitch
+									.getSwitchId()
+									+ edgeSwitch.getSwitchId(), aNode, eNode);
+							graph.insertEdge(parent, null, edgeSwitch
+									.getSwitchId()
+									+ aggregrateSwitch.getSwitchId(), eNode,
+									aNode);
 
 							for (final Server server : edgeSwitch.getServers()) {
 								if (server.isActive()) {
-									final Object sNode = serverNodes
+									final mxCell sNode = serverNodes
 											.get(server);
-									graph.insertEdge(parent, null, "d", eNode,
+									graph.insertEdge(parent, null, edgeSwitch
+											.getSwitchId()
+											+ server.getServerId(), eNode,
 											sNode);
+									graph.insertEdge(parent, null, server
+											.getServerId()
+											+ edgeSwitch.getSwitchId(), sNode,
+											eNode);
 								}
 							}
 						}
-
 					}
 				}
-
 			}
 		}
 
@@ -188,32 +200,58 @@ public class ExtElasticTree {
 
 		};
 
-		final Object[] v = graph.getChildVertices(graph.getDefaultParent());
-		final Object[] e = graph.getChildEdges(graph.getDefaultParent());
 		final mxGraphAnalysis mga = mxGraphAnalysis.getInstance();
 
-		int start = 1;
-		final int len = edgeSwitchesGlobal.size();
+		final Set<EdgeSwitch> edgesToCheck = new HashSet<EdgeSwitch>();
+		edgesToCheck.addAll(edgeSwitchesGlobal);
+
+		Iterator<EdgeSwitch> edgeIter = edgesToCheck.iterator();
+		edgeIter.next();
+		edgeIter.remove();
+
 		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
-			for (int x = start; x < len; x++) {
-				final EdgeSwitch compare = edgeSwitchesGlobal.get(x);
-				final Server server1 = edgeSwitch.getServers().iterator()
-						.next();
-				final Server server2 = compare.getServers().iterator().next();
+			while (edgeIter.hasNext()) {
+				final EdgeSwitch compare = edgeIter.next();
+				// final EdgeSwitch compare = edgeSwitchesGlobal.get(x);
+				final Iterator<Server> serverIter1 = edgeSwitch.getServers()
+						.iterator();
+				final Iterator<Server> serverIter2 = compare.getServers()
+						.iterator();
+				final Server server1 = serverIter1.next();
+				Server server2 = serverIter2.next();
+				if (server1.equals(server2)) {
+					server2 = serverIter2.next();
+				}
+				// server2 = iter.next();
+
+				final Object from = serverNodes.get(server1);
+				final Object to = serverNodes.get(server2);
+
+				// from = graph.getChildVertices(graph.getDefaultParent())[0];
+				// to = graph.getChildVertices(graph.getDefaultParent())[1];
+
+				final Iterator<Entry<EdgeSwitch, mxCell>> i = edgeNodes
+						.entrySet().iterator();
+
+				final Object[] edges = mga.getShortestPath(graph, from, to, cf,
+						900000, false);
+				if (edges == null || edges.length == 0) {
+					System.out.println(server1.getServerId() + ","
+							+ server2.getServerId());
+					return false;
+				}
+				System.out.print("Length=" + edges.length + "|");
+				for (final Object cur : edges) {
+					final mxCell c = (mxCell) cur;
+					System.out.print(c.getValue() + "|");
+				}
+				System.out.println("");
 			}
+			edgesToCheck.remove(edgeSwitch);
+			edgeIter = edgesToCheck.iterator();
 
-			start++;
 		}
 
-		final Object from = null;
-		final Object to = null;
-		// mga.getShortestPath(graph, from, to, cf, Integer.MAX_VALUE, false);
-
-		final Object[] edges = mga.getMinimumSpanningTree(graph, v, e, cf);
-
-		if (edges == null || edges.length < 1) {
-			return false;
-		}
 		return true;
 	}
 
@@ -284,7 +322,7 @@ public class ExtElasticTree {
 	private Set<Server> createServers(final String edgeSwitchId) {
 		final Set<Server> servers = new HashSet<Server>();
 		for (int s = 0; s < serversPerEdgeSwitch; s++) {
-			final Server server = new Server("Server", s);
+			final Server server = new Server(edgeSwitchId, s);
 			servers.add(server);
 			serversGlobal.add(server);
 		}
