@@ -36,10 +36,10 @@ public class ExtElasticTree {
 	private final List<AggregrateSwitch> aggregrateSwitchesGlobal = new ArrayList<AggregrateSwitch>();
 
 	private final int numberOfPods;
-	private final int aggregateSwitchesPerPod = 2;
-	private final int edgeSwitchesPerPod = 2;
-	private final int serversPerEdgeSwitch = 48;
-	private final int numberOfCoreSwitches = 4;
+	private final int aggregateSwitchesPerPod;
+	private final int edgeSwitchesPerPod;
+	private final int serversPerEdgeSwitch;
+	private final int numberOfCoreSwitches;
 
 	private final int UNIT_OF_WORK_PER_SERVER = 2;
 
@@ -51,10 +51,16 @@ public class ExtElasticTree {
 	final Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
 
 	public ExtElasticTree() {
-		this(4);
+		this(4, 2, 2, 48, 4);
 	}
 
-	public ExtElasticTree(final int numPods) {
+	public ExtElasticTree(final int numPods, final int aggregateSwitchesPerPod,
+			final int edgeSwitchesPerPod, final int serversPerEdgeSwitch,
+			final int numberOfCoreSwitches) {
+		this.numberOfCoreSwitches = numberOfCoreSwitches;
+		this.serversPerEdgeSwitch = serversPerEdgeSwitch;
+		this.edgeSwitchesPerPod = edgeSwitchesPerPod;
+		this.aggregateSwitchesPerPod = aggregateSwitchesPerPod;
 		numberOfPods = numPods;
 
 		final int totalServers = numberOfPods * edgeSwitchesPerPod
