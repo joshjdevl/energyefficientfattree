@@ -4,12 +4,52 @@ import edu.ucla.cloud.Node;
 
 public abstract class Switch implements Node {
 
+	private int count = 0;
+	private final int capacity;
 	private boolean active = true;
 	private final String switchId;
 	static int ID_GENERATOR = 1;
 
-	public Switch(final String prefix) {
+	public Switch(final String prefix, final int capacity) {
 		this.switchId = prefix + "-" + ID_GENERATOR++;
+		this.capacity = capacity;
+	}
+
+	public void incrementCount() {
+		count++;
+	}
+
+	public void reset() {
+		count = 0;
+	}
+
+	protected void decrementCount() {
+		count--;
+	}
+
+	public double getCost() {
+		final double cost = fractionCost() * linkCapacity();
+		return cost;
+	}
+
+	public double effectiveThroughputCost() {
+		incrementCount();
+
+		final double cost = fractionCost() * linkCapacity();
+
+		decrementCount();
+
+		return cost;
+	}
+
+	abstract protected int linkCapacity();
+
+	public double fractionCost() {
+		if (count <= capacity) {
+			return 1.0;
+		} else {
+			return capacity / count;
+		}
 	}
 
 	/**

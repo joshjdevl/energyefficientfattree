@@ -5,7 +5,7 @@ public class Server implements Node {
 	private boolean active = true;
 
 	public Server(final String edgeSwitchId, final int serverNumber) {
-		this.serverId = "S-" + serverNumber + "-" + edgeSwitchId;
+		this.serverId = "S-" + serverNumber + "(" + edgeSwitchId + ")";
 	}
 
 	/**

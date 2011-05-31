@@ -43,15 +43,15 @@ public class ExtElasticTree {
 
 	private final int UNIT_OF_WORK_PER_SERVER = 2;
 
-	private final boolean[][] connectedTopology;
-
+	Map<String, Switch> switchMasterList = new HashMap<String, Switch>();
 	final Map<CoreSwitch, mxCell> coreNodes = new HashMap<CoreSwitch, mxCell>();
 	final Map<AggregrateSwitch, mxCell> aggregateNodes = new HashMap<AggregrateSwitch, mxCell>();
 	final Map<EdgeSwitch, mxCell> edgeNodes = new HashMap<EdgeSwitch, mxCell>();
 	final Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
 
 	public ExtElasticTree() {
-		this(4, 2, 2, 48, 4);
+		// this(4, 2, 2, 48, 4);
+		this(2, 2, 2, 2, 2);
 	}
 
 	public ExtElasticTree(final int numPods, final int aggregateSwitchesPerPod,
@@ -65,10 +65,9 @@ public class ExtElasticTree {
 
 		final int totalServers = numberOfPods * edgeSwitchesPerPod
 				* serversPerEdgeSwitch;
-		connectedTopology = new boolean[totalServers][totalServers];
 
 		for (int c = 0; c < numberOfCoreSwitches; c++) {
-			final CoreSwitch coreSwitch = new CoreSwitch();
+			final CoreSwitch coreSwitch = new CoreSwitch(totalServers / 2);
 			coreSwitchesGlobal.add(coreSwitch);
 		}
 
@@ -118,6 +117,7 @@ public class ExtElasticTree {
 					coreSwitch.getSwitchId(), x, 20, 80, 30);
 			x += 250;
 			coreNodes.put(coreSwitch, node);
+			switchMasterList.put((String) node.getValue(), coreSwitch);
 		}
 		x = 80;
 		for (final AggregrateSwitch aggregrateSwitch : aggregrateSwitchesGlobal) {
@@ -125,6 +125,7 @@ public class ExtElasticTree {
 					aggregrateSwitch.getSwitchId(), x, 150, 80, 30);
 			x += 150;
 			aggregateNodes.put(aggregrateSwitch, node);
+			switchMasterList.put((String) node.getValue(), aggregrateSwitch);
 		}
 
 		x = 80;
@@ -133,6 +134,7 @@ public class ExtElasticTree {
 					edgeSwitch.getSwitchId(), x, 250, 80, 30);
 			x += 150;
 			edgeNodes.put(edgeSwitch, node);
+			switchMasterList.put((String) node.getValue(), edgeSwitch);
 		}
 		x = 10;
 		int count = 0;
@@ -158,10 +160,11 @@ public class ExtElasticTree {
 				final mxCell aNode = aggregateNodes.get(aggregrateSwitch);
 				if (aggregrateSwitch.isActive()) {
 					graph.insertEdge(parent, null, coreSwitch.getSwitchId()
-							+ aggregrateSwitch.getSwitchId(), cNode, aNode);
-					graph.insertEdge(parent, null, aggregrateSwitch
-							.getSwitchId()
-							+ coreSwitch.getSwitchId(), aNode, cNode);
+							+ "+" + aggregrateSwitch.getSwitchId(), cNode,
+							aNode);
+					// graph.insertEdge(parent, null, aggregrateSwitch
+					// .getSwitchId()
+					// + coreSwitch.getSwitchId(), aNode, cNode);
 
 					for (final EdgeSwitch edgeSwitch : aggregrateSwitch
 							.getEdgeSwitchs()) {
@@ -169,11 +172,12 @@ public class ExtElasticTree {
 							final mxCell eNode = edgeNodes.get(edgeSwitch);
 							graph.insertEdge(parent, null, aggregrateSwitch
 									.getSwitchId()
-									+ edgeSwitch.getSwitchId(), aNode, eNode);
-							graph.insertEdge(parent, null, edgeSwitch
-									.getSwitchId()
-									+ aggregrateSwitch.getSwitchId(), eNode,
-									aNode);
+									+ "+" + edgeSwitch.getSwitchId(), aNode,
+									eNode);
+							// graph.insertEdge(parent, null, edgeSwitch
+							// .getSwitchId()
+							// + aggregrateSwitch.getSwitchId(), eNode,
+							// aNode);
 
 							for (final Server server : edgeSwitch.getServers()) {
 								if (server.isActive()) {
@@ -181,12 +185,12 @@ public class ExtElasticTree {
 											.get(server);
 									graph.insertEdge(parent, null, edgeSwitch
 											.getSwitchId()
-											+ server.getServerId(), eNode,
-											sNode);
-									graph.insertEdge(parent, null, server
-											.getServerId()
-											+ edgeSwitch.getSwitchId(), sNode,
-											eNode);
+											+ "+" + server.getServerId(),
+											eNode, sNode);
+									// graph.insertEdge(parent, null, server
+									// .getServerId()
+									// + edgeSwitch.getSwitchId(), sNode,
+									// eNode);
 								}
 							}
 						}
@@ -203,10 +207,17 @@ public class ExtElasticTree {
 	public boolean areAllServersConnected() {
 		final mxGraph graph = getGraph();
 
+		double effectiveThroughput = 0.0;
+
 		final mxICostFunction cf = new mxICostFunction() {
 			@Override
 			public double getCost(final mxCellState state) {
-				return 1;
+				final mxCell node = (mxCell) state.getCell();
+				final String key = node.getValue().toString().split("\\+")[0];
+
+				// return 1;
+				final Switch switchNode = switchMasterList.get(key);
+				return switchNode.effectiveThroughputCost();
 			}
 
 		};
@@ -222,46 +233,56 @@ public class ExtElasticTree {
 
 		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
 			while (edgeIter.hasNext()) {
+
 				final EdgeSwitch compare = edgeIter.next();
-				// final EdgeSwitch compare = edgeSwitchesGlobal.get(x);
+				System.out.println(compare.getSwitchId());
+
 				final Iterator<Server> serverIter1 = edgeSwitch.getServers()
 						.iterator();
 				final Iterator<Server> serverIter2 = compare.getServers()
 						.iterator();
-				final Server server1 = serverIter1.next();
-				Server server2 = serverIter2.next();
-				if (server1.equals(server2)) {
-					server2 = serverIter2.next();
-				}
-				// server2 = iter.next();
+				while (serverIter1.hasNext() && serverIter2.hasNext()) {
+					final Server server1 = serverIter1.next();
+					Server server2 = serverIter2.next();
+					if (server1.equals(server2)) {
+						server2 = serverIter2.next();
+					}
 
-				final Object from = serverNodes.get(server1);
-				final Object to = serverNodes.get(server2);
+					final Object from = serverNodes.get(server1);
+					final Object to = serverNodes.get(server2);
 
-				// from = graph.getChildVertices(graph.getDefaultParent())[0];
-				// to = graph.getChildVertices(graph.getDefaultParent())[1];
+					final Iterator<Entry<EdgeSwitch, mxCell>> i = edgeNodes
+							.entrySet().iterator();
 
-				final Iterator<Entry<EdgeSwitch, mxCell>> i = edgeNodes
-						.entrySet().iterator();
-
-				final Object[] edges = mga.getShortestPath(graph, from, to, cf,
-						900000, false);
-				if (edges == null || edges.length == 0) {
+					final Object[] edges = mga.getShortestPath(graph, from, to,
+							cf, 900000, false);
+					if (edges == null || edges.length == 0) {
+						System.out.println(server1.getServerId() + ","
+								+ server2.getServerId());
+						return false;
+					}
 					System.out.println(server1.getServerId() + ","
 							+ server2.getServerId());
-					return false;
+					// System.out.print("Length=" + edges.length + "|");
+					for (final Object cur : edges) {
+						final mxCell c = (mxCell) cur;
+						final String key = c.getValue().toString().split("\\+")[0];
+						final Switch switchNode = switchMasterList.get(key);
+						if (switchNode != null) {
+							switchNode.incrementCount();
+							effectiveThroughput += switchNode.getCost();
+						}
+
+						// System.out.print(c.getValue() + "|");
+					}
+					// System.out.println("");
 				}
-				System.out.print("Length=" + edges.length + "|");
-				for (final Object cur : edges) {
-					final mxCell c = (mxCell) cur;
-					System.out.print(c.getValue() + "|");
-				}
-				System.out.println("");
 			}
 			edgesToCheck.remove(edgeSwitch);
 			edgeIter = edgesToCheck.iterator();
-
 		}
+
+		System.out.println(effectiveThroughput);
 
 		return true;
 	}
@@ -310,7 +331,8 @@ public class ExtElasticTree {
 		final Set<EdgeSwitch> edgeSwitchs = createEdgeSwitches();
 
 		for (int as = 0; as < aggregateSwitchesPerPod; as++) {
-			final AggregrateSwitch aggregrateSwitch = new AggregrateSwitch();
+			final AggregrateSwitch aggregrateSwitch = new AggregrateSwitch(
+					serversPerEdgeSwitch);
 			aggregrateSwitch.getEdgeSwitchs().addAll(edgeSwitchs);
 			pod.getAggregrateSwitchs().add(aggregrateSwitch);
 			aggregrateSwitchesGlobal.add(aggregrateSwitch);
@@ -321,7 +343,7 @@ public class ExtElasticTree {
 	private Set<EdgeSwitch> createEdgeSwitches() {
 		final Set<EdgeSwitch> edgeSwitchs = new HashSet<EdgeSwitch>();
 		for (int es = 0; es < edgeSwitchesPerPod; es++) {
-			final EdgeSwitch edgeSwitch = new EdgeSwitch();
+			final EdgeSwitch edgeSwitch = new EdgeSwitch(serversPerEdgeSwitch);
 			final Set<Server> servers = createServers(edgeSwitch.getSwitchId());
 			edgeSwitch.getServers().addAll(servers);
 			edgeSwitchs.add(edgeSwitch);
