@@ -29,7 +29,7 @@ public class EdgeSwitch extends Switch {
 	}
 
 	@Override
-	protected int linkCapacity() {
+	protected double linkCapacity() {
 		return SwitchConstants.EDGE_THROUGHPUT;
 	}
 

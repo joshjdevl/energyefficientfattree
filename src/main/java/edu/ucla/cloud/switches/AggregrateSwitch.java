@@ -37,7 +37,7 @@ public class AggregrateSwitch extends Switch {
 	}
 
 	@Override
-	protected int linkCapacity() {
+	protected double linkCapacity() {
 
 		return SwitchConstants.AGGREGATE_THROUGHPUT;
 	}

@@ -35,20 +35,36 @@ public abstract class Switch implements Node {
 	public double effectiveThroughputCost() {
 		incrementCount();
 
-		final double cost = fractionCost() * linkCapacity();
+		final double cost = shortestPathFractionCost();
 
 		decrementCount();
 
 		return cost;
 	}
 
-	abstract protected int linkCapacity();
+	abstract protected double linkCapacity();
+
+	public double shortestPathFractionCost() {
+
+		if (count <= capacity) {
+			return 1.0;
+		} else {
+
+			final double ratio = (double) count / (double) capacity;
+			// System.out.println(capacity + "," + count + "," + ratio);
+			return ratio;
+		}
+
+	}
 
 	public double fractionCost() {
 		if (count <= capacity) {
 			return 1.0;
 		} else {
-			return capacity / count;
+
+			final double ratio = (double) capacity / (double) count;
+			// System.out.println(capacity + "," + count + "," + ratio);
+			return ratio;
 		}
 	}
 

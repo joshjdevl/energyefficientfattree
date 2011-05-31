@@ -10,13 +10,11 @@ public class Main extends JFrame {
 		super("Network Topology");
 
 		final ExtElasticTree eetree = new ExtElasticTree();
-		// eetree.compute(2);
-
-		// eetree.clearServerEdges();
-		System.out.println("IsConnected=" + eetree.areAllServersConnected());
+		final double lowestCostBruteForce = eetree.bruteForce(1);
+		System.out.println("lowestCostBruteForce=" + lowestCostBruteForce);
+		System.out.println("IsConnected=" + eetree.topologyThroughput());
 		final mxGraphComponent graphComponent = eetree.print();
 		getContentPane().add(graphComponent);
-		// System.out.println(eetree.calculateThroughput());
 
 	}
 

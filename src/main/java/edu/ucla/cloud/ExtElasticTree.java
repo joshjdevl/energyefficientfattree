@@ -27,6 +27,8 @@ import edu.ucla.cloud.switches.Switch;
  * 
  */
 public class ExtElasticTree {
+	private Display display = null;
+
 	private final GraphUtil graphUtil = new GraphUtil();
 
 	private final List<CoreSwitch> coreSwitchesGlobal = new ArrayList<CoreSwitch>();
@@ -50,8 +52,8 @@ public class ExtElasticTree {
 	final Map<Server, mxCell> serverNodes = new HashMap<Server, mxCell>();
 
 	public ExtElasticTree() {
-		// this(4, 2, 2, 48, 4);
 		this(2, 2, 2, 2, 2);
+		// this(2, 2, 2, 2, 2);
 	}
 
 	public ExtElasticTree(final int numPods, final int aggregateSwitchesPerPod,
@@ -113,6 +115,7 @@ public class ExtElasticTree {
 
 		int x = 180;
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
+			coreSwitch.reset();
 			final mxCell node = (mxCell) graph.insertVertex(parent, null,
 					coreSwitch.getSwitchId(), x, 20, 80, 30);
 			x += 250;
@@ -121,6 +124,7 @@ public class ExtElasticTree {
 		}
 		x = 80;
 		for (final AggregrateSwitch aggregrateSwitch : aggregrateSwitchesGlobal) {
+			aggregrateSwitch.reset();
 			final mxCell node = (mxCell) graph.insertVertex(parent, null,
 					aggregrateSwitch.getSwitchId(), x, 150, 80, 30);
 			x += 150;
@@ -130,6 +134,7 @@ public class ExtElasticTree {
 
 		x = 80;
 		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
+			edgeSwitch.reset();
 			final mxCell node = (mxCell) graph.insertVertex(parent, null,
 					edgeSwitch.getSwitchId(), x, 250, 80, 30);
 			x += 150;
@@ -153,50 +158,52 @@ public class ExtElasticTree {
 		}
 
 		for (final CoreSwitch coreSwitch : coreSwitchesGlobal) {
+
 			final mxCell cNode = coreNodes.get(coreSwitch);
 
 			for (final AggregrateSwitch aggregrateSwitch : coreSwitch
 					.getAggregrateSwitchs()) {
 				final mxCell aNode = aggregateNodes.get(aggregrateSwitch);
-				if (aggregrateSwitch.isActive()) {
+				if (aggregrateSwitch.isActive() && coreSwitch.isActive()) {
 					graph.insertEdge(parent, null, coreSwitch.getSwitchId()
 							+ "+" + aggregrateSwitch.getSwitchId(), cNode,
 							aNode);
-					// graph.insertEdge(parent, null, aggregrateSwitch
+				}
+				// graph.insertEdge(parent, null, aggregrateSwitch
+				// .getSwitchId()
+				// + coreSwitch.getSwitchId(), aNode, cNode);
+
+				for (final EdgeSwitch edgeSwitch : aggregrateSwitch
+						.getEdgeSwitchs()) {
+					final mxCell eNode = edgeNodes.get(edgeSwitch);
+					if (edgeSwitch.isActive() && aggregrateSwitch.isActive()) {
+
+						graph.insertEdge(parent, null, aggregrateSwitch
+								.getSwitchId()
+								+ "+" + edgeSwitch.getSwitchId(), aNode, eNode);
+					}
+					// graph.insertEdge(parent, null, edgeSwitch
 					// .getSwitchId()
-					// + coreSwitch.getSwitchId(), aNode, cNode);
+					// + aggregrateSwitch.getSwitchId(), eNode,
+					// aNode);
 
-					for (final EdgeSwitch edgeSwitch : aggregrateSwitch
-							.getEdgeSwitchs()) {
-						if (edgeSwitch.isActive()) {
-							final mxCell eNode = edgeNodes.get(edgeSwitch);
-							graph.insertEdge(parent, null, aggregrateSwitch
+					for (final Server server : edgeSwitch.getServers()) {
+						if (server.isActive() && edgeSwitch.isActive()) {
+							final mxCell sNode = serverNodes.get(server);
+							graph.insertEdge(parent, null, edgeSwitch
 									.getSwitchId()
-									+ "+" + edgeSwitch.getSwitchId(), aNode,
-									eNode);
-							// graph.insertEdge(parent, null, edgeSwitch
-							// .getSwitchId()
-							// + aggregrateSwitch.getSwitchId(), eNode,
-							// aNode);
-
-							for (final Server server : edgeSwitch.getServers()) {
-								if (server.isActive()) {
-									final mxCell sNode = serverNodes
-											.get(server);
-									graph.insertEdge(parent, null, edgeSwitch
-											.getSwitchId()
-											+ "+" + server.getServerId(),
-											eNode, sNode);
-									// graph.insertEdge(parent, null, server
-									// .getServerId()
-									// + edgeSwitch.getSwitchId(), sNode,
-									// eNode);
-								}
-							}
+									+ "+" + server.getServerId(), eNode, sNode);
+							// graph.insertEdge(parent, null, server
+							// .getServerId()
+							// + edgeSwitch.getSwitchId(), sNode,
+							// eNode);
 						}
 					}
+
 				}
+
 			}
+
 		}
 
 		graph.getModel().endUpdate();
@@ -204,7 +211,63 @@ public class ExtElasticTree {
 		return graph;
 	}
 
-	public boolean areAllServersConnected() {
+	public double bruteForce(final int numberOfSwitchesToEliminate) {
+		getGraph();
+
+		double cost = Double.MIN_VALUE;
+
+		final Set<Entry<String, Switch>> entrySet = switchMasterList.entrySet();
+
+		for (final Entry<String, Switch> cur : entrySet) {
+			final Switch node = cur.getValue();
+			node.setActive(false);
+			final double runningCost = bruteForceRecurse(entrySet, 1,
+					numberOfSwitchesToEliminate, cost);
+			if (runningCost > cost) {
+				cost = runningCost;
+				display = new Display(print());
+			}
+			node.setActive(true);
+		}
+
+		display.activate();
+
+		return cost;
+	}
+
+	private double bruteForceRecurse(final Set<Entry<String, Switch>> entrySet,
+			final int currentDepth, final int numberOfSwitchesToEliminate,
+			final double threshold) {
+
+		final double highestCost = threshold;
+
+		if (currentDepth >= numberOfSwitchesToEliminate) {
+			final double topologyCost = topologyThroughput();
+			if (topologyCost == 908.0383116883118) {
+				System.out.println("found");
+
+			}
+			return topologyCost;
+		}
+
+		for (final Entry<String, Switch> cur : entrySet) {
+			final Switch node = cur.getValue();
+			if (node.isActive()) {
+				node.setActive(false);
+				double iterationRunningCost = bruteForceRecurse(entrySet,
+						currentDepth + 1, numberOfSwitchesToEliminate,
+						threshold);
+				node.setActive(true);
+				if (iterationRunningCost > highestCost) {
+					iterationRunningCost = highestCost;
+				}
+			}
+		}
+
+		return highestCost;
+	}
+
+	public double topologyThroughput() {
 		final mxGraph graph = getGraph();
 
 		double effectiveThroughput = 0.0;
@@ -212,12 +275,15 @@ public class ExtElasticTree {
 		final mxICostFunction cf = new mxICostFunction() {
 			@Override
 			public double getCost(final mxCellState state) {
+
 				final mxCell node = (mxCell) state.getCell();
 				final String key = node.getValue().toString().split("\\+")[0];
 
-				// return 1;
 				final Switch switchNode = switchMasterList.get(key);
-				return switchNode.effectiveThroughputCost();
+				final double throughput = switchNode.effectiveThroughputCost();
+				// System.out.println(key + "," + throughput);
+				return throughput;
+
 			}
 
 		};
@@ -228,63 +294,88 @@ public class ExtElasticTree {
 		edgesToCheck.addAll(edgeSwitchesGlobal);
 
 		Iterator<EdgeSwitch> edgeIter = edgesToCheck.iterator();
-		edgeIter.next();
-		edgeIter.remove();
+		// edgeIter.next();
+		// edgeIter.remove();
 
 		for (final EdgeSwitch edgeSwitch : edgeSwitchesGlobal) {
+
 			while (edgeIter.hasNext()) {
 
 				final EdgeSwitch compare = edgeIter.next();
-				System.out.println(compare.getSwitchId());
+				// System.out.println(compare.getSwitchId());
 
 				final Iterator<Server> serverIter1 = edgeSwitch.getServers()
 						.iterator();
-				final Iterator<Server> serverIter2 = compare.getServers()
-						.iterator();
-				while (serverIter1.hasNext() && serverIter2.hasNext()) {
+
+				while (serverIter1.hasNext()) {
 					final Server server1 = serverIter1.next();
-					Server server2 = serverIter2.next();
-					if (server1.equals(server2)) {
-						server2 = serverIter2.next();
-					}
+					final Iterator<Server> serverIter2 = compare.getServers()
+							.iterator();
+					while (serverIter2.hasNext()) {
 
-					final Object from = serverNodes.get(server1);
-					final Object to = serverNodes.get(server2);
-
-					final Iterator<Entry<EdgeSwitch, mxCell>> i = edgeNodes
-							.entrySet().iterator();
-
-					final Object[] edges = mga.getShortestPath(graph, from, to,
-							cf, 900000, false);
-					if (edges == null || edges.length == 0) {
-						System.out.println(server1.getServerId() + ","
-								+ server2.getServerId());
-						return false;
-					}
-					System.out.println(server1.getServerId() + ","
-							+ server2.getServerId());
-					// System.out.print("Length=" + edges.length + "|");
-					for (final Object cur : edges) {
-						final mxCell c = (mxCell) cur;
-						final String key = c.getValue().toString().split("\\+")[0];
-						final Switch switchNode = switchMasterList.get(key);
-						if (switchNode != null) {
-							switchNode.incrementCount();
-							effectiveThroughput += switchNode.getCost();
+						Server server2 = serverIter2.next();
+						while (server1.equals(server2) && serverIter2.hasNext()) {
+							// System.out.println(server1.getServerId() + ","
+							// + server2.getServerId());
+							server2 = serverIter2.next();
 						}
 
-						// System.out.print(c.getValue() + "|");
+						final Object from = serverNodes.get(server1);
+						final Object to = serverNodes.get(server2);
+
+						final Iterator<Entry<EdgeSwitch, mxCell>> i = edgeNodes
+								.entrySet().iterator();
+
+						final Object[] edges = mga.getShortestPath(graph, from,
+								to, cf, 9999, false);
+						if (edges == null || edges.length == 0) {
+
+							// return Double.MIN_VALUE;
+						} else {
+							// System.out.print("Length=" + edges.length + "|");
+							for (final Object cur : edges) {
+								final mxCell c = (mxCell) cur;
+								final String key = c.getValue().toString()
+										.split("\\+")[0];
+								final Switch switchNode = switchMasterList
+										.get(key);
+								if (switchNode != null) {
+									switchNode.incrementCount();
+									effectiveThroughput += switchNode.getCost();
+									if (switchNode instanceof CoreSwitch) {
+										// System.out
+										// .println(switchNode.getCost());
+									}
+
+									// System.out.println(switchNode.getSwitchId()
+									// + "=" + switchNode.getCost());
+									// if (effectiveThroughput > 2000) {
+									// System.out.println(server1.getServerId()
+									// + "," + server2.getServerId());
+									//
+									// System.out.println(effectiveThroughput);
+									// }
+								} else {
+									// System.out.println(key);
+								}
+
+								// System.out.print(c.getValue() + "|");
+							}
+							// System.out.println("");
+						}
+
 					}
-					// System.out.println("");
+
 				}
 			}
+			// edgeIter.remove();
 			edgesToCheck.remove(edgeSwitch);
 			edgeIter = edgesToCheck.iterator();
 		}
 
-		System.out.println(effectiveThroughput);
+		// System.out.println(effectiveThroughput);
 
-		return true;
+		return effectiveThroughput;
 	}
 
 	public mxGraphComponent print() {

@@ -29,7 +29,7 @@ public class CoreSwitch extends Switch {
 	}
 
 	@Override
-	protected int linkCapacity() {
+	protected double linkCapacity() {
 		return SwitchConstants.CORE_THROUGHPUT;
 	}
 
